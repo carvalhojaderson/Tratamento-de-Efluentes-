@@ -1,0 +1,1130 @@
+<script>
+/**
+ * ============================================
+ * SISTEMA DE ANÁLISE DE EFLUENTES - JAVASCRIPT
+ * ============================================
+ */
+
+// ============================================
+// VARIÁVEIS GLOBAIS
+// ============================================
+let usuarioAtual = null;
+let parametrosAnalise = [];
+let pontosColeta = [];
+let historicoAnalises = [];
+let artigoAtual = null;
+let secaoArtigoAtual = 0;
+let reconhecimentoVoz = null;
+
+// ============================================
+// CONFIGURAÇÃO DE PARÂMETROS
+// ============================================
+const PARAMETROS_PADRAO = [
+  { nome: 'pH', unidade: '', referencia: '6.0 - 9.0', tipo: 'fisico' },
+  { nome: 'Temperatura', unidade: '°C', referencia: '< 40', tipo: 'fisico' },
+  { nome: 'Condutividade', unidade: 'μS/cm', referencia: '-', tipo: 'fisico' },
+  { nome: 'Turbidez', unidade: 'NTU', referencia: '< 100', tipo: 'fisico' },
+  { nome: 'Cor', unidade: 'uH', referencia: '< 75', tipo: 'fisico' },
+  { nome: 'OD', unidade: 'mg/L', referencia: '> 4.0', tipo: 'fisico' },
+  { nome: 'DBO₅', unidade: 'mg/L', referencia: '< 60', tipo: 'organico' },
+  { nome: 'DQO', unidade: 'mg/L', referencia: '< 90', tipo: 'organico' },
+  { nome: 'Sólidos Totais', unidade: 'mg/L', referencia: '< 500', tipo: 'fisico' },
+  { nome: 'Sólidos Suspensos', unidade: 'mg/L', referencia: '< 50', tipo: 'fisico' },
+  { nome: 'Nitrogênio Total', unidade: 'mg/L', referencia: '< 20', tipo: 'nutriente' },
+  { nome: 'Nitrogênio Amoniacal', unidade: 'mg/L', referencia: '< 5', tipo: 'nutriente' },
+  { nome: 'Fósforo Total', unidade: 'mg/L', referencia: '< 1', tipo: 'nutriente' },
+  { nome: 'Fosfato', unidade: 'mg/L', referencia: '< 0.5', tipo: 'nutriente' },
+  { nome: 'Óleos e Graxas', unidade: 'mg/L', referencia: '< 10', tipo: 'organico' },
+  { nome: 'Coliformes Totais', unidade: 'NMP/100mL', referencia: '< 1000', tipo: 'biologico' },
+  { nome: 'E. Coli', unidade: 'NMP/100mL', referencia: '< 200', tipo: 'biologico' },
+  { nome: 'Alumínio', unidade: 'mg/L', referencia: '< 0.2', tipo: 'metal' },
+  { nome: 'Arsênio', unidade: 'mg/L', referencia: '< 0.01', tipo: 'metal' },
+  { nome: 'Cádmio', unidade: 'mg/L', referencia: '< 0.005', tipo: 'metal' },
+  { nome: 'Chumbo', unidade: 'mg/L', referencia: '< 0.01', tipo: 'metal' },
+  { nome: 'Cobre', unidade: 'mg/L', referencia: '< 0.5', tipo: 'metal' },
+  { nome: 'Cromo', unidade: 'mg/L', referencia: '< 0.05', tipo: 'metal' },
+  { nome: 'Ferro', unidade: 'mg/L', referencia: '< 0.3', tipo: 'metal' },
+  { nome: 'Manganês', unidade: 'mg/L', referencia: '< 0.1', tipo: 'metal' },
+  { nome: 'Mercúrio', unidade: 'mg/L', referencia: '< 0.0001', tipo: 'metal' },
+  { nome: 'Níquel', unidade: 'mg/L', referencia: '< 0.025', tipo: 'metal' },
+  { nome: 'Zinco', unidade: 'mg/L', referencia: '< 0.5', tipo: 'metal' },
+  { nome: 'Fenóis', unidade: 'mg/L', referencia: '< 0.5', tipo: 'organico' },
+  { nome: 'Surfactantes', unidade: 'mg/L', referencia: '< 0.5', tipo: 'organico' },
+  { nome: 'Cloro Residual', unidade: 'mg/L', referencia: '0.2 - 2.0', tipo: 'quimico' }
+];
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+  inicializarSistema();
+});
+
+function inicializarSistema() {
+  // Define data e hora atuais
+  const agora = new Date();
+  document.getElementById('analise-data').value = agora.toISOString().split('T')[0];
+  document.getElementById('analise-hora').value = agora.toTimeString().slice(0, 5);
+
+  // Carrega parâmetros
+  carregarParametros();
+
+  // Configura eventos
+  configurarEventos();
+
+  // Inicializa reconhecimento de voz
+  inicializarReconhecimentoVoz();
+}
+
+function configurarEventos() {
+  // Login
+  document.getElementById('form-login').addEventListener('submit', function(e) {
+    e.preventDefault();
+    realizarLogin();
+  });
+
+  // Registro
+  document.getElementById('form-registro').addEventListener('submit', function(e) {
+    e.preventDefault();
+    realizarRegistro();
+  });
+
+  // Análise
+  document.getElementById('form-analise').addEventListener('submit', function(e) {
+    e.preventDefault();
+    salvarAnalise();
+  });
+
+  // Ponto de coleta
+  document.getElementById('form-ponto').addEventListener('submit', function(e) {
+    e.preventDefault();
+    salvarNovoPonto();
+  });
+}
+
+// ============================================
+// NAVEGAÇÃO
+// ============================================
+function mostrarTela(tela) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+  document.getElementById('tela-' + tela).classList.add('ativa');
+}
+
+function mostrarSecao(secao) {
+  // Atualiza menu
+  document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('ativo'));
+  event.currentTarget.classList.add('ativo');
+
+  // Mostra seção
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.getElementById('secao-' + secao).classList.add('ativa');
+
+  // Carrega dados específicos
+  if (secao === 'historico') carregarHistorico();
+  if (secao === 'graficos') carregarGraficos();
+  if (secao === 'pontos-coleta') carregarPontosColeta();
+  if (secao === 'artigo') inicializarArtigo();
+}
+
+// ============================================
+// AUTENTICAÇÃO
+// ============================================
+function realizarLogin() {
+  const email = document.getElementById('email').value;
+  const senha = document.getElementById('senha').value;
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      mostrarLoading(false);
+
+      if (resposta.sucesso) {
+        usuarioAtual = resposta.usuario;
+        atualizarInterfaceUsuario();
+        mostrarTela('dashboard');
+        carregarDadosDashboard();
+        mostrarNotificacao('Bem-vindo, ' + usuarioAtual.nome + '!', 'sucesso');
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .withFailureHandler(function(erro) {
+      mostrarLoading(false);
+      mostrarNotificacao('Erro: ' + erro.message, 'erro');
+    })
+    .loginUsuario(email, senha);
+}
+
+function realizarRegistro() {
+  const dados = {
+    nome: document.getElementById('reg-nome').value,
+    email: document.getElementById('reg-email').value,
+    senha: document.getElementById('reg-senha').value
+  };
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      mostrarLoading(false);
+
+      if (resposta.sucesso) {
+        mostrarNotificacao('Cadastro realizado! Faça login.', 'sucesso');
+        mostrarTela('login');
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .withFailureHandler(function(erro) {
+      mostrarLoading(false);
+      mostrarNotificacao('Erro: ' + erro.message, 'erro');
+    })
+    .registrarUsuario(dados);
+}
+
+function logout() {
+  usuarioAtual = null;
+  mostrarTela('login');
+  mostrarNotificacao('Logout realizado!', 'info');
+}
+
+function atualizarInterfaceUsuario() {
+  document.getElementById('nome-usuario').textContent = usuarioAtual.nome;
+  document.getElementById('saldo-tokens').textContent = usuarioAtual.tokens;
+}
+
+// ============================================
+// PARÂMETROS E ANÁLISE
+// ============================================
+function carregarParametros() {
+  const container = document.getElementById('lista-parametros');
+  container.innerHTML = '';
+
+  // Agrupa por tipo
+  const grupos = {};
+  PARAMETROS_PADRAO.forEach(param => {
+    if (!grupos[param.tipo]) grupos[param.tipo] = [];
+    grupos[param.tipo].push(param);
+  });
+
+  const nomesGrupos = {
+    fisico: '🔬 Parâmetros Físicos',
+    organico: '🧬 Parâmetros Orgânicos',
+    nutriente: '🌱 Nutrientes',
+    metal: '⚙️ Metais',
+    biologico: '🔬 Indicadores Biológicos',
+    quimico: '⚗️ Parâmetros Químicos'
+  };
+
+  Object.keys(grupos).forEach(tipo => {
+    const grupoDiv = document.createElement('div');
+    grupoDiv.className = 'parametro-grupo';
+    grupoDiv.innerHTML = '<h4>' + nomesGrupos[tipo] + '</h4>';
+
+    const grid = document.createElement('div');
+    grid.className = 'parametros-grid';
+
+    grupos[tipo].forEach((param, index) => {
+      const card = document.createElement('div');
+      card.className = 'parametro-card';
+      card.innerHTML = `
+        <div class="parametro-header">
+          <span class="parametro-nome">${param.nome}</span>
+          <span class="parametro-ref">Ref: ${param.referencia}</span>
+        </div>
+        <div class="parametro-leituras">
+          <div class="leitura-input">
+            <label>1ª Leitura</label>
+            <input type="number" step="0.01" class="leitura1" data-param="${param.nome}" placeholder="0.00">
+          </div>
+          <div class="leitura-input">
+            <label>2ª Leitura</label>
+            <input type="number" step="0.01" class="leitura2" data-param="${param.nome}" placeholder="0.00">
+          </div>
+          <div class="leitura-input">
+            <label>3ª Leitura</label>
+            <input type="number" step="0.01" class="leitura3" data-param="${param.nome}" placeholder="0.00">
+          </div>
+          <div class="leitura-media">
+            <label>Média</label>
+            <input type="text" class="media" data-param="${param.nome}" readonly placeholder="-">
+            <span class="unidade">${param.unidade}</span>
+          </div>
+          <button type="button" class="btn-calcular-media" onclick="calcularMediaIndividual('${param.nome}')">
+            🧮
+          </button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    grupoDiv.appendChild(grid);
+    container.appendChild(grupoDiv);
+  });
+}
+
+function calcularMediaIndividual(paramNome) {
+  const card = document.querySelector(`[data-param="${paramNome}"]`).closest('.parametro-card');
+  const l1 = parseFloat(card.querySelector('.leitura1').value) || 0;
+  const l2 = parseFloat(card.querySelector('.leitura2').value) || 0;
+  const l3 = parseFloat(card.querySelector('.leitura3').value) || 0;
+
+  const leituras = [l1, l2, l3].filter(l => l > 0);
+  const media = leituras.length > 0 ? (leituras.reduce((a, b) => a + b, 0) / leituras.length).toFixed(2) : '-';
+
+  card.querySelector('.media').value = media;
+
+  // Efeito visual
+  card.classList.add('calculado');
+  setTimeout(() => card.classList.remove('calculado'), 500);
+}
+
+function calcularTodasMedias() {
+  document.querySelectorAll('.parametro-card').forEach(card => {
+    const paramNome = card.querySelector('.leitura1').dataset.param;
+    calcularMediaIndividual(paramNome);
+  });
+
+  mostrarNotificacao('Todas as médias calculadas!', 'sucesso');
+}
+
+function salvarAnalise() {
+  // Coleta dados
+  const parametros = [];
+  document.querySelectorAll('.parametro-card').forEach(card => {
+    const nome = card.querySelector('.leitura1').dataset.param;
+    const l1 = card.querySelector('.leitura1').value;
+    const l2 = card.querySelector('.leitura2').value;
+    const l3 = card.querySelector('.leitura3').value;
+    const media = card.querySelector('.media').value;
+
+    if (l1 || l2 || l3) {
+      const paramInfo = PARAMETROS_PADRAO.find(p => p.nome === nome);
+      parametros.push({
+        nome: nome,
+        leitura1: l1,
+        leitura2: l2,
+        leitura3: l3,
+        media: media,
+        unidade: paramInfo ? paramInfo.unidade : '',
+        referencia: paramInfo ? paramInfo.referencia : ''
+      });
+    }
+  });
+
+  if (parametros.length === 0) {
+    mostrarNotificacao('Preencha pelo menos um parâmetro!', 'erro');
+    return;
+  }
+
+  // Pega tipo de ponto selecionado
+  const tipoPonto = document.querySelector('input[name="tipo-ponto"]:checked');
+  if (!tipoPonto) {
+    mostrarNotificacao('Selecione o tipo de ponto de coleta!', 'erro');
+    return;
+  }
+
+  const dados = {
+    usuarioId: usuarioAtual.id,
+    data: document.getElementById('analise-data').value,
+    hora: document.getElementById('analise-hora').value,
+    pontoColeta: document.getElementById('analise-ponto').value,
+    tipoPonto: tipoPonto.value,
+    parametros: parametros,
+    observacoes: document.getElementById('analise-observacoes').value
+  };
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      mostrarLoading(false);
+
+      if (resposta.sucesso) {
+        mostrarNotificacao(`Análise salva! +${resposta.tokensGanhos} tokens`, 'sucesso');
+        document.getElementById('form-analise').reset();
+        carregarParametros(); // Recria os campos
+        carregarDadosDashboard();
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .withFailureHandler(function(erro) {
+      mostrarLoading(false);
+      mostrarNotificacao('Erro: ' + erro.message, 'erro');
+    })
+    .salvarAnalise(dados);
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
+function carregarDadosDashboard() {
+  // Atualiza tokens
+  google.script.run
+    .withSuccessHandler(function(tokens) {
+      document.getElementById('saldo-tokens').textContent = tokens;
+      document.getElementById('tokens-total').textContent = tokens;
+      atualizarNivel(tokens);
+    })
+    .obterSaldoTokens(usuarioAtual.id);
+
+  // Carrega histórico resumido
+  google.script.run
+    .withSuccessHandler(function(analises) {
+      document.getElementById('total-analises').textContent = analises.length;
+      atualizarUltimasAnalises(analises.slice(0, 5));
+    })
+    .obterHistoricoAnalises({ usuario: usuarioAtual.id });
+
+  // Carrega pontos
+  google.script.run
+    .withSuccessHandler(function(pontos) {
+      document.getElementById('total-pontos').textContent = pontos.length;
+      atualizarSelectPontos(pontos);
+    })
+    .obterPontosColeta();
+}
+
+function atualizarNivel(tokens) {
+  let nivel = 'Iniciante';
+  let proximo = 500;
+
+  if (tokens >= 10001) { nivel = 'Mestre'; proximo = 999999; }
+  else if (tokens >= 5001) { nivel = 'Especialista'; proximo = 10000; }
+  else if (tokens >= 2001) { nivel = 'Avançado'; proximo = 5000; }
+  else if (tokens >= 501) { nivel = 'Intermediário'; proximo = 2000; }
+
+  document.getElementById('nivel-usuario').textContent = nivel;
+  document.getElementById('nivel-atual').textContent = nivel;
+
+  const anterior = nivel === 'Iniciante' ? 0 : 
+                   nivel === 'Intermediário' ? 501 :
+                   nivel === 'Avançado' ? 2001 :
+                   nivel === 'Especialista' ? 5001 : 10001;
+
+  const progresso = ((tokens - anterior) / (proximo - anterior)) * 100;
+  document.getElementById('barra-nivel').style.width = progresso + '%';
+  document.getElementById('texto-progresso').textContent = `${tokens} / ${proximo} tokens para o próximo nível`;
+}
+
+function atualizarUltimasAnalises(analises) {
+  const container = document.getElementById('lista-ultimas-analises');
+
+  if (analises.length === 0) {
+    container.innerHTML = '<p class="vazio">Nenhuma análise registrada</p>';
+    return;
+  }
+
+  container.innerHTML = analises.map(a => `
+    <div class="item-mini" onclick="verDetalhesAnalise('${a.id}')">
+      <span class="item-data">${formatarData(a.data)}</span>
+      <span class="item-ponto">${a.pontoColeta}</span>
+      <span class="item-tipo tipo-${a.tipoPonto.toLowerCase()}">${a.tipoPonto}</span>
+    </div>
+  `).join('');
+}
+
+function atualizarSelectPontos(pontos) {
+  const selects = [document.getElementById('analise-ponto'), document.getElementById('filtro-ponto')];
+
+  selects.forEach(select => {
+    if (!select) return;
+    const atual = select.value;
+    select.innerHTML = '<option value="">Selecione...</option>' +
+      pontos.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+    select.value = atual;
+  });
+}
+
+// ============================================
+// HISTÓRICO
+// ============================================
+function carregarHistorico() {
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(analises) {
+      mostrarLoading(false);
+      historicoAnalises = analises;
+      renderizarTabelaHistorico(analises);
+    })
+    .obterHistoricoAnalises({});
+}
+
+function renderizarTabelaHistorico(analises) {
+  const tbody = document.getElementById('tbody-historico');
+
+  if (analises.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma análise encontrada</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = analises.map(a => `
+    <tr>
+      <td>${a.id}</td>
+      <td>${formatarData(a.data)}</td>
+      <td>${a.pontoColeta}</td>
+      <td><span class="badge tipo-${a.tipoPonto.toLowerCase()}">${a.tipoPonto}</span></td>
+      <td>${a.parametros.length} parâmetros</td>
+      <td>
+        <button onclick="verDetalhesAnalise('${a.id}')" class="btn-acao">👁️</button>
+        <button onclick="gerarRelatorio('${a.id}')" class="btn-acao">📄</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function aplicarFiltros() {
+  const filtros = {
+    dataInicio: document.getElementById('filtro-data-inicio').value,
+    dataFim: document.getElementById('filtro-data-fim').value,
+    pontoColeta: document.getElementById('filtro-ponto').value,
+    tipoPonto: document.getElementById('filtro-tipo').value
+  };
+
+  mostrarLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(analises) {
+      mostrarLoading(false);
+      renderizarTabelaHistorico(analises);
+    })
+    .obterHistoricoAnalises(filtros);
+}
+
+function verDetalhesAnalise(id) {
+  const analise = historicoAnalises.find(a => a.id === id);
+  if (!analise) return;
+
+  const modal = document.getElementById('modal-analise-conteudo');
+  modal.innerHTML = `
+    <div class="analise-detalhes">
+      <div class="analise-info">
+        <p><strong>ID:</strong> ${analise.id}</p>
+        <p><strong>Data:</strong> ${formatarData(analise.data)} às ${analise.hora}</p>
+        <p><strong>Ponto:</strong> ${analise.pontoColeta}</p>
+        <p><strong>Tipo:</strong> <span class="badge tipo-${analise.tipoPonto.toLowerCase()}">${analise.tipoPonto}</span></p>
+      </div>
+
+      <h4>Parâmetros Analisados</h4>
+      <table class="tabela-parametros">
+        <thead>
+          <tr>
+            <th>Parâmetro</th>
+            <th>Leitura 1</th>
+            <th>Leitura 2</th>
+            <th>Leitura 3</th>
+            <th>Média</th>
+            <th>Unidade</th>
+            <th>Referência</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${analise.parametros.map(p => `
+            <tr>
+              <td>${p.nome}</td>
+              <td>${p.leitura1 || '-'}</td>
+              <td>${p.leitura2 || '-'}</td>
+              <td>${p.leitura3 || '-'}</td>
+              <td><strong>${p.media}</strong></td>
+              <td>${p.unidade}</td>
+              <td>${p.referencia}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      ${analise.observacoes ? `<div class="analise-obs"><strong>Observações:</strong> ${analise.observacoes}</div>` : ''}
+    </div>
+  `;
+
+  mostrarModal('analise');
+}
+
+// ============================================
+// GRÁFICOS
+// ============================================
+function carregarGraficos() {
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      if (resposta.sucesso) {
+        criarGraficoComparativo(resposta.dados);
+        criarGraficoTemporal();
+        criarGraficoPizza(resposta.dados);
+      }
+    })
+    .obterDadosGraficos();
+}
+
+function criarGraficoComparativo(dados) {
+  const canvas = document.getElementById('grafico-comparativo');
+  const ctx = canvas.getContext('2d');
+
+  // Limpa canvas
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight || 300;
+
+  const parametros = Object.keys(dados).slice(0, 10); // Primeiros 10
+  const barWidth = 20;
+  const gap = 10;
+  const groupGap = 30;
+  const startX = 60;
+  const startY = canvas.height - 40;
+
+  // Encontra valor máximo
+  let maxVal = 0;
+  parametros.forEach(p => {
+    maxVal = Math.max(maxVal, dados[p].entrada, dados[p].intermediario, dados[p].saida);
+  });
+
+  const scale = (canvas.height - 80) / (maxVal || 1);
+
+  // Desenha eixos
+  ctx.strokeStyle = '#333';
+  ctx.beginPath();
+  ctx.moveTo(startX, 20);
+  ctx.lineTo(startX, startY);
+  ctx.lineTo(canvas.width - 20, startY);
+  ctx.stroke();
+
+  // Desenha barras
+  parametros.forEach((param, i) => {
+    const x = startX + 20 + i * (barWidth * 3 + gap * 2 + groupGap);
+
+    // Entrada (vermelho)
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(x, startY - dados[param].entrada * scale, barWidth, dados[param].entrada * scale);
+
+    // Intermediário (amarelo)
+    ctx.fillStyle = '#f39c12';
+    ctx.fillRect(x + barWidth + gap, startY - dados[param].intermediario * scale, barWidth, dados[param].intermediario * scale);
+
+    // Saída (verde)
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(x + (barWidth + gap) * 2, startY - dados[param].saida * scale, barWidth, dados[param].saida * scale);
+
+    // Label
+    ctx.fillStyle = '#333';
+    ctx.font = '10px Arial';
+    ctx.save();
+    ctx.translate(x + barWidth, startY + 15);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillText(param, 0, 0);
+    ctx.restore();
+  });
+
+  // Legenda
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(canvas.width - 150, 20, 15, 15);
+  ctx.fillStyle = '#333';
+  ctx.fillText('Entrada', canvas.width - 130, 32);
+
+  ctx.fillStyle = '#f39c12';
+  ctx.fillRect(canvas.width - 150, 40, 15, 15);
+  ctx.fillStyle = '#333';
+  ctx.fillText('Intermediário', canvas.width - 130, 52);
+
+  ctx.fillStyle = '#27ae60';
+  ctx.fillRect(canvas.width - 150, 60, 15, 15);
+  ctx.fillStyle = '#333';
+  ctx.fillText('Saída', canvas.width - 130, 72);
+}
+
+function criarGraficoTemporal() {
+  // Implementação simplificada - pode ser expandida
+  const canvas = document.getElementById('grafico-temporal');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight || 250;
+
+  ctx.fillStyle = #f0f0f0';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#666';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gráfico Temporal - Em desenvolvimento', canvas.width / 2, canvas.height / 2);
+}
+
+function criarGraficoPizza(dados) {
+  const canvas = document.getElementById('grafico-pizza');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight || 250;
+
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#666';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Distribuição por Parâmetro - Em desenvolvimento', canvas.width / 2, canvas.height / 2);
+}
+
+function downloadGrafico(tipo, formato) {
+  const canvas = document.getElementById('grafico-' + tipo);
+
+  if (formato === 'png') {
+    const link = document.createElement('a');
+    link.download = 'grafico_' + tipo + '_' + new Date().getTime() + '.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  } else {
+    mostrarNotificacao('Download PDF em desenvolvimento', 'info');
+  }
+}
+
+// ============================================
+// PONTOS DE COLETA
+// ============================================
+function carregarPontosColeta() {
+  google.script.run
+    .withSuccessHandler(function(pontos) {
+      pontosColeta = pontos;
+      renderizarPontosColeta(pontos);
+    })
+    .obterPontosColeta();
+}
+
+function renderizarPontosColeta(pontos) {
+  const container = document.getElementById('lista-pontos-coleta');
+
+  if (pontos.length === 0) {
+    container.innerHTML = '<p class="vazio">Nenhum ponto de coleta cadastrado</p>';
+    return;
+  }
+
+  container.innerHTML = pontos.map(p => `
+    <div class="ponto-card">
+      <div class="ponto-info">
+        <h4>${p.nome}</h4>
+        <p>${p.descricao || 'Sem descrição'}</p>
+        <span class="ponto-local">📍 ${p.localizacao || 'Localização não definida'}</span>
+      </div>
+      <div class="ponto-acoes">
+        <button onclick="editarPonto('${p.id}')" class="btn-acao">✏️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function mostrarModalNovoPonto() {
+  document.getElementById('form-ponto').reset();
+  mostrarModal('ponto');
+}
+
+function salvarNovoPonto() {
+  const dados = {
+    nome: document.getElementById('ponto-nome').value,
+    descricao: document.getElementById('ponto-descricao').value,
+    localizacao: document.getElementById('ponto-localizacao').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      if (resposta.sucesso) {
+        mostrarNotificacao('Ponto salvo!', 'sucesso');
+        fecharModal('ponto');
+        carregarPontosColeta();
+        carregarDadosDashboard();
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .salvarPontoColeta(dados);
+}
+
+// ============================================
+// ARTIGO ABNT
+// ============================================
+function inicializarArtigo() {
+  if (!artigoAtual) {
+    artigoAtual = {
+      titulo: '',
+      autores: [],
+      resumo: '',
+      palavrasChave: [],
+      introducao: '',
+      metodologia: '',
+      resultados: '',
+      discussao: '',
+      conclusao: '',
+      referencias: []
+    };
+    secaoArtigoAtual = 0;
+  }
+
+  atualizarSidebarArtigo();
+  mostrarSecaoArtigo(0);
+}
+
+function atualizarSidebarArtigo() {
+  const secoes = [
+    { id: 'titulo', nome: 'Título' },
+    { id: 'autores', nome: 'Autores' },
+    { id: 'resumo', nome: 'Resumo' },
+    { id: 'palavrasChave', nome: 'Palavras-chave' },
+    { id: 'introducao', nome: 'Introdução' },
+    { id: 'metodologia', nome: 'Metodologia' },
+    { id: 'resultados', nome: 'Resultados' },
+    { id: 'discussao', nome: 'Discussão' },
+    { id: 'conclusao', nome: 'Conclusão' },
+    { id: 'referencias', nome: 'Referências' }
+  ];
+
+  const lista = document.getElementById('artigo-secoes-lista');
+  lista.innerHTML = secoes.map((s, i) => `
+    <li class="${i === secaoArtigoAtual ? 'ativa' : ''} ${artigoAtual[s.id] ? 'preenchida' : ''}" 
+        onclick="mostrarSecaoArtigo(${i})">
+      ${s.nome}
+    </li>
+  `).join('');
+
+  // Atualiza progresso
+  const preenchidas = secoes.filter(s => artigoAtual[s.id] && artigoAtual[s.id].toString().trim() !== '').length;
+  const progresso = (preenchidas / secoes.length) * 100;
+  document.getElementById('artigo-barra-progresso').style.width = progresso + '%';
+  document.getElementById('artigo-texto-progresso').textContent = Math.round(progresso) + '% completo';
+}
+
+function mostrarSecaoArtigo(index) {
+  secaoArtigoAtual = index;
+  const secoes = ['titulo', 'autores', 'resumo', 'palavrasChave', 'introducao', 'metodologia', 'resultados', 'discussao', 'conclusao', 'referencias'];
+  const secao = secoes[index];
+
+  const container = document.getElementById('artigo-secao-atual');
+
+  const templates = {
+    titulo: `
+      <h3>Título do Artigo</h3>
+      <input type="text" id="artigo-titulo" value="${artigoAtual.titulo}" 
+             placeholder="Digite o título do artigo..." class="input-titulo">
+    `,
+    autores: `
+      <h3>Autores</h3>
+      <textarea id="artigo-autores" rows="4" placeholder="Nome1; Instituição1; email1@...\nNome2; Instituição2; email2@...">${artigoAtual.autores.join('\n')}</textarea>
+    `,
+    resumo: `
+      <h3>Resumo</h3>
+      <textarea id="artigo-resumo" rows="10" placeholder="Digite o resumo (150-250 palavras)...">${artigoAtual.resumo}</textarea>
+      <p class="dica">💡 Dica: O resumo deve conter objetivo, metodologia, resultados e conclusões.</p>
+    `,
+    palavrasChave: `
+      <h3>Palavras-chave</h3>
+      <input type="text" id="artigo-palavras" value="${artigoAtual.palavrasChave.join(', ')}" 
+             placeholder="Palavra1, Palavra2, Palavra3... (3 a 5 palavras)">
+    `,
+    introducao: `
+      <h3>Introdução</h3>
+      <textarea id="artigo-introducao" rows="15" placeholder="Desenvolva a introdução...">${artigoAtual.introducao}</textarea>
+    `,
+    metodologia: `
+      <h3>Metodologia</h3>
+      <textarea id="artigo-metodologia" rows="15" placeholder="Descreva os métodos utilizados...">${artigoAtual.metodologia}</textarea>
+    `,
+    resultados: `
+      <h3>Resultados</h3>
+      <textarea id="artigo-resultados" rows="15" placeholder="Apresente os resultados...">${artigoAtual.resultados}</textarea>
+    `,
+    discussao: `
+      <h3>Discussão</h3>
+      <textarea id="artigo-discussao" rows="15" placeholder="Discuta os resultados...">${artigoAtual.discussao}</textarea>
+    `,
+    conclusao: `
+      <h3>Conclusão</h3>
+      <textarea id="artigo-conclusao" rows="10" placeholder="Apresente as conclusões...">${artigoAtual.conclusao}</textarea>
+    `,
+    referencias: `
+      <h3>Referências</h3>
+      <textarea id="artigo-referencias" rows="15" placeholder="Referências no formato ABNT...">${artigoAtual.referencias.join('\n')}</textarea>
+    `
+  };
+
+  container.innerHTML = templates[secao];
+  atualizarSidebarArtigo();
+}
+
+function secaoAnterior() {
+  if (secaoArtigoAtual > 0) {
+    salvarSecaoAtual();
+    mostrarSecaoArtigo(secaoArtigoAtual - 1);
+  }
+}
+
+function proximaSecao() {
+  if (secaoArtigoAtual < 9) {
+    salvarSecaoAtual();
+    mostrarSecaoArtigo(secaoArtigoAtual + 1);
+  }
+}
+
+function salvarSecaoAtual() {
+  const secoes = ['titulo', 'autores', 'resumo', 'palavrasChave', 'introducao', 'metodologia', 'resultados', 'discussao', 'conclusao', 'referencias'];
+  const secao = secoes[secaoArtigoAtual];
+
+  const elemento = document.getElementById('artigo-' + (secao === 'palavrasChave' ? 'palavras' : secao));
+  if (elemento) {
+    const valor = elemento.value;
+    if (secao === 'autores' || secao === 'referencias') {
+      artigoAtual[secao] = valor.split('\n').filter(l => l.trim());
+    } else if (secao === 'palavrasChave') {
+      artigoAtual[secao] = valor.split(',').map(p => p.trim()).filter(p => p);
+    } else {
+      artigoAtual[secao] = valor;
+    }
+  }
+}
+
+function salvarArtigoLocal() {
+  salvarSecaoAtual();
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      if (resposta.sucesso) {
+        mostrarNotificacao('Artigo salvo! +' + resposta.tokensGanhos + ' tokens', 'sucesso');
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .salvarArtigo({ ...artigoAtual, usuarioId: usuarioAtual.id });
+}
+
+function exportarArtigo(formato) {
+  salvarSecaoAtual();
+  mostrarNotificacao('Exportação ' + formato + ' em desenvolvimento', 'info');
+}
+
+// ============================================
+// ASSISTENTE IA
+// ============================================
+function mostrarModalAIAssistant() {
+  mostrarModal('ai');
+}
+
+function enviarPerguntaAI() {
+  const pergunta = document.getElementById('ai-pergunta').value;
+  if (!pergunta.trim()) return;
+
+  const chat = document.getElementById('ai-chat');
+
+  // Adiciona pergunta do usuário
+  chat.innerHTML += `
+    <div class="ai-mensagem usuario">
+      <p>${pergunta}</p>
+    </div>
+  `;
+
+  document.getElementById('ai-pergunta').value = '';
+  chat.scrollTop = chat.scrollHeight;
+
+  // Simula resposta da IA (em produção, integrar com API Gemini)
+  setTimeout(() => {
+    const resposta = gerarRespostaAI(pergunta);
+    chat.innerHTML += `
+      <div class="ai-mensagem ai">
+        <p>${resposta}</p>
+      </div>
+    `;
+    chat.scrollTop = chat.scrollHeight;
+  }, 1000);
+}
+
+function gerarRespostaAI(pergunta) {
+  const p = pergunta.toLowerCase();
+
+  if (p.includes('abnt') || p.includes('formatar')) {
+    return 'Para formatar seu artigo segundo a ABNT NBR 6022:2018:\n\n1. Use fonte Times New Roman 12\n2. Margens: 3cm (superior/esquerda), 2cm (inferior/direita)\n3. Espaçamento 1,5 entre linhas\n4. Parágrafo: 1,25cm de recuo\n5. Numere as páginas no canto superior direito';
+  }
+
+  if (p.includes('resumo')) {
+    return 'O resumo deve conter:\n- Contextualização do problema\n- Objetivo do trabalho\n- Metodologia utilizada\n- Principais resultados\n- Conclusão principal\n\nExtensão: 150-250 palavras';
+  }
+
+  if (p.includes('referência')) {
+    return 'Formato ABNT para referências:\n\nLIVRO: SOBRENOME, Nome. Título. Edição. Local: Editora, Ano.\n\nARTIGO: SOBRENOME, Nome. Título do artigo. Nome da Revista, Local, v. X, n. Y, p. Z, ano.';
+  }
+
+  return 'Estou aqui para ajudar com seu artigo científico! Posso auxiliar com formatação ABNT, estrutura do artigo, citações e referências. O que você precisa?';
+}
+
+function usarSugestaoAI(acao) {
+  const sugestoes = {
+    'formate-como-abnt': 'Como formatar meu artigo segundo as normas ABNT?',
+    'gerar-resumo': 'Como fazer um bom resumo?',
+    'revisar-texto': 'Revise meu texto e sugira melhorias',
+    'sugerir-referencias': 'Como fazer referências no formato ABNT?'
+  };
+
+  document.getElementById('ai-pergunta').value = sugestoes[acao];
+  enviarPerguntaAI();
+}
+
+// ============================================
+// RECONHECIMENTO DE VOZ
+// ============================================
+function inicializarReconhecimentoVoz() {
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    reconhecimentoVoz = new SpeechRecognition();
+    reconhecimentoVoz.lang = 'pt-BR';
+    reconhecimentoVoz.continuous = true;
+    reconhecimentoVoz.interimResults = false;
+
+    reconhecimentoVoz.onresult = function(event) {
+      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+      processarComandoVoz(transcript);
+    };
+
+    reconhecimentoVoz.onerror = function(event) {
+      console.error('Erro no reconhecimento de voz:', event.error);
+    };
+  }
+}
+
+function iniciarReconhecimentoVoz() {
+  if (!reconhecimentoVoz) {
+    mostrarNotificacao('Reconhecimento de voz não suportado neste navegador', 'erro');
+    return;
+  }
+
+  reconhecimentoVoz.start();
+  mostrarNotificacao('🎤 Ouvindo... Diga um comando', 'info');
+
+  // Para após 5 segundos
+  setTimeout(() => {
+    reconhecimentoVoz.stop();
+  }, 5000);
+}
+
+function processarComandoVoz(comando) {
+  mostrarNotificacao('Comando: "' + comando + '"', 'info');
+
+  // Exemplos de comandos
+  if (comando.includes('calcular média')) {
+    calcularTodasMedias();
+  } else if (comando.includes('salvar')) {
+    salvarAnalise();
+  } else if (comando.includes('limpar')) {
+    document.getElementById('form-analise').reset();
+    carregarParametros();
+  }
+}
+
+// ============================================
+// EXPORTAÇÃO
+// ============================================
+function exportarHistorico(formato) {
+  if (formato === 'csv') {
+    const csv = converterParaCSV(historicoAnalises);
+    downloadArquivo(csv, 'historico_analises.csv', 'text/csv');
+  } else if (formato === 'excel') {
+    mostrarNotificacao('Exportação Excel em desenvolvimento', 'info');
+  }
+}
+
+function converterParaCSV(dados) {
+  if (dados.length === 0) return '';
+
+  const cabecalho = ['ID', 'Data', 'Hora', 'Ponto', 'Tipo', 'Parâmetro', 'Leitura1', 'Leitura2', 'Leitura3', 'Média', 'Unidade'];
+  let csv = cabecalho.join(';') + '\n';
+
+  dados.forEach(a => {
+    a.parametros.forEach(p => {
+      csv += [a.id, a.data, a.hora, a.pontoColeta, a.tipoPonto, p.nome, p.leitura1, p.leitura2, p.leitura3, p.media, p.unidade].join(';') + '\n';
+    });
+  });
+
+  return csv;
+}
+
+function downloadArquivo(conteudo, nome, tipo) {
+  const blob = new Blob([conteudo], { type: tipo });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nome;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function gerarRelatorio(id) {
+  mostrarNotificacao('Gerando relatório PDF...', 'info');
+
+  google.script.run
+    .withSuccessHandler(function(resposta) {
+      if (resposta.sucesso) {
+        window.open(resposta.url, '_blank');
+      } else {
+        mostrarNotificacao(resposta.mensagem, 'erro');
+      }
+    })
+    .gerarRelatorioPDF(id);
+}
+
+// ============================================
+// UTILITÁRIOS
+// ============================================
+function mostrarModal(id) {
+  document.getElementById('modal-' + id).style.display = 'block';
+}
+
+function fecharModal(id) {
+  document.getElementById('modal-' + id).style.display = 'none';
+}
+
+function mostrarModalTokens() {
+  google.script.run
+    .withSuccessHandler(function(historico) {
+      const container = document.getElementById('modal-historico-tokens');
+      container.innerHTML = historico.map(h => `
+        <div class="token-item ${h.quantidade > 0 ? 'ganho' : 'gasto'}">
+          <span>${h.motivo}</span>
+          <span class="token-valor">${h.quantidade > 0 ? '+' : ''}${h.quantidade}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('modal-saldo-tokens').textContent = usuarioAtual.tokens;
+      mostrarModal('tokens');
+    })
+    .obterHistoricoTokens(usuarioAtual.id);
+}
+
+function mostrarNotificacao(mensagem, tipo) {
+  const container = document.getElementById('notificacoes');
+  const notif = document.createElement('div');
+  notif.className = 'notificacao ' + tipo;
+  notif.innerHTML = `
+    <span class="notif-icon">${tipo === 'sucesso' ? '✅' : tipo === 'erro' ? '❌' : 'ℹ️'}</span>
+    <span>${mensagem}</span>
+  `;
+
+  container.appendChild(notif);
+
+  setTimeout(() => {
+    notif.classList.add('saindo');
+    setTimeout(() => notif.remove(), 300);
+  }, 4000);
+}
+
+function mostrarLoading(mostrar) {
+  // Implementação simples - pode ser expandida
+  if (mostrar) {
+    document.body.style.cursor = 'wait';
+  } else {
+    document.body.style.cursor = 'default';
+  }
+}
+
+function formatarData(data) {
+  if (!data) return '-';
+  const d = new Date(data);
+  return d.toLocaleDateString('pt-BR');
+}
+
+// Fecha modais ao clicar fora
+window.onclick = function(event) {
+  if (event.target.classList.contains('modal')) {
+    event.target.style.display = 'none';
+  }
+};
+</script>
