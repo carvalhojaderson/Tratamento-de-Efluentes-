@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Análise de Efluentes</title>
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <!-- ============================================
+       TELA DE LOGIN
+       ============================================ -->
+  <div id="tela-login" class="tela ativa">
+    <div class="login-container">
+      <div class="login-box">
+        <div class="logo">
+          <span class="logo-icon">💧</span>
+          <h1>Análise de Efluentes</h1>
+          <p>Sistema de Monitoramento Ambiental</p>
+        </div>
+
+        <form id="form-login" class="form-login">
+          <div class="input-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="seu@email.com" required>
+          </div>
+
+          <div class="input-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" placeholder="••••••••" required>
+          </div>
+
+          <button type="submit" class="btn-primario btn-full">
+            <span>Entrar</span>
+            <span class="btn-icon">→</span>
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <p>Não tem conta? <a href="#" onclick="mostrarTela('registro')">Cadastre-se</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       TELA DE REGISTRO
+       ============================================ -->
+  <div id="tela-registro" class="tela">
+    <div class="login-container">
+      <div class="login-box">
+        <div class="logo">
+          <span class="logo-icon">💧</span>
+          <h1>Criar Conta</h1>
+        </div>
+
+        <form id="form-registro" class="form-login">
+          <div class="input-group">
+            <label for="reg-nome">Nome Completo</label>
+            <input type="text" id="reg-nome" placeholder="Seu nome" required>
+          </div>
+
+          <div class="input-group">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email" placeholder="seu@email.com" required>
+          </div>
+
+          <div class="input-group">
+            <label for="reg-senha">Senha</label>
+            <input type="password" id="reg-senha" placeholder="Mínimo 6 caracteres" required>
+          </div>
+
+          <button type="submit" class="btn-primario btn-full">
+            <span>Cadastrar</span>
+            <span class="btn-icon">→</span>
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <p>Já tem conta? <a href="#" onclick="mostrarTela('login')">Faça login</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       TELA PRINCIPAL (DASHBOARD)
+       ============================================ -->
+  <div id="tela-dashboard" class="tela">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-logo">
+        <span class="logo-icon">💧</span>
+        <span class="logo-text">Análise de Efluentes</span>
+      </div>
+
+      <div class="header-usuario">
+        <div class="tokens-badge" onclick="mostrarModalTokens()">
+          <span class="token-icon">🪙</span>
+          <span id="saldo-tokens">0</span>
+          <span class="nivel-tag" id="nivel-usuario">Iniciante</span>
+        </div>
+
+        <div class="usuario-menu">
+          <span id="nome-usuario">Usuário</span>
+          <button onclick="logout()" class="btn-sair">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Menu Lateral -->
+    <nav class="menu-lateral">
+      <ul class="menu-lista">
+        <li class="menu-item ativo" onclick="mostrarSecao('dashboard')">
+          <span class="menu-icon">📊</span>
+          <span class="menu-texto">Dashboard</span>
+        </li>
+        <li class="menu-item" onclick="mostrarSecao('nova-analise')">
+          <span class="menu-icon">🧪</span>
+          <span class="menu-texto">Nova Análise</span>
+          <span class="menu-badge novo">Novo</span>
+        </li>
+        <li class="menu-item" onclick="mostrarSecao('historico')">
+          <span class="menu-icon">📋</span>
+          <span class="menu-texto">Histórico</span>
+        </li>
+        <li class="menu-item" onclick="mostrarSecao('graficos')">
+          <span class="menu-icon">📈</span>
+          <span class="menu-texto">Gráficos</span>
+        </li>
+        <li class="menu-item" onclick="mostrarSecao('pontos-coleta')">
+          <span class="menu-icon">📍</span>
+          <span class="menu-texto">Pontos de Coleta</span>
+        </li>
+        <li class="menu-item" onclick="mostrarSecao('artigo')">
+          <span class="menu-icon">📝</span>
+          <span class="menu-texto">Artigo ABNT</span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <main class="conteudo-principal">
+
+      <!-- SEÇÃO: DASHBOARD -->
+      <section id="secao-dashboard" class="secao ativa">
+        <h2 class="secao-titulo">Dashboard</h2>
+
+        <div class="cards-resumo">
+          <div class="card-resumo">
+            <div class="card-icon azul">🧪</div>
+            <div class="card-info">
+              <span class="card-valor" id="total-analises">0</span>
+              <span class="card-label">Análises Realizadas</span>
+            </div>
+          </div>
+
+          <div class="card-resumo">
+            <div class="card-icon verde">📍</div>
+            <div class="card-info">
+              <span class="card-valor" id="total-pontos">0</span>
+              <span class="card-label">Pontos de Coleta</span>
+            </div>
+          </div>
+
+          <div class="card-resumo">
+            <div class="card-icon laranja">🪙</div>
+            <div class="card-info">
+              <span class="card-valor" id="tokens-total">0</span>
+              <span class="card-label">Tokens Acumulados</span>
+            </div>
+          </div>
+
+          <div class="card-resumo">
+            <div class="card-icon roxo">📈</div>
+            <div class="card-info">
+              <span class="card-valor" id="nivel-atual">Iniciante</span>
+              <span class="card-label">Nível Atual</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>📊 Últimas Análises</h3>
+            <div id="lista-ultimas-analises" class="lista-mini">
+              <p class="vazio">Nenhuma análise registrada</p>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <h3>🏆 Progresso</h3>
+            <div class="progresso-nivel">
+              <div class="barra-progresso">
+                <div id="barra-nivel" class="barra-preenchida" style="width: 0%"></div>
+              </div>
+              <p id="texto-progresso">0 / 500 tokens para o próximo nível</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO: NOVA ANÁLISE -->
+      <section id="secao-nova-analise" class="secao">
+        <div class="secao-header">
+          <h2 class="secao-titulo">🧪 Nova Análise</h2>
+          <button onclick="iniciarReconhecimentoVoz()" class="btn-secundario">
+            <span>🎤</span> Voz
+          </button>
+        </div>
+
+        <form id="form-analise" class="form-analise">
+          <!-- Informações Gerais -->
+          <div class="form-grupo">
+            <h3>Informações Gerais</h3>
+
+            <div class="form-row">
+              <div class="input-group">
+                <label for="analise-data">Data da Coleta *</label>
+                <input type="date" id="analise-data" required>
+              </div>
+
+              <div class="input-group">
+                <label for="analise-hora">Hora da Coleta *</label>
+                <input type="time" id="analise-hora" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="input-group">
+                <label for="analise-ponto">Ponto de Coleta *</label>
+                <select id="analise-ponto" required>
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+
+              <div class="input-group">
+                <label>Tipo de Ponto de Coleta *</label>
+                <div class="tipo-ponto-selector">
+                  <label class="tipo-ponto-option">
+                    <input type="radio" name="tipo-ponto" value="Entrada" required>
+                    <span class="tipo-ponto-card entrada">
+                      <span class="tipo-icon">⬇️</span>
+                      <span class="tipo-label">Entrada</span>
+                      <span class="tipo-desc">Efluente bruto</span>
+                    </span>
+                  </label>
+
+                  <label class="tipo-ponto-option">
+                    <input type="radio" name="tipo-ponto" value="Intermediário">
+                    <span class="tipo-ponto-card intermediario">
+                      <span class="tipo-icon">⚙️</span>
+                      <span class="tipo-label">Intermediário</span>
+                      <span class="tipo-desc">Durante tratamento</span>
+                    </span>
+                  </label>
+
+                  <label class="tipo-ponto-option">
+                    <input type="radio" name="tipo-ponto" value="Saída">
+                    <span class="tipo-ponto-card saida">
+                      <span class="tipo-icon">⬆️</span>
+                      <span class="tipo-label">Saída</span>
+                      <span class="tipo-desc">Efluente tratado</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parâmetros de Análise -->
+          <div class="form-grupo">
+            <div class="parametros-header">
+              <h3>Parâmetros Analisados</h3>
+              <button type="button" onclick="calcularTodasMedias()" class="btn-calcular-todas">
+                <span>🧮</span> Calcular Todas as Médias
+              </button>
+            </div>
+
+            <div id="lista-parametros" class="lista-parametros">
+              <!-- Parâmetros serão inseridos via JavaScript -->
+            </div>
+          </div>
+
+          <!-- Observações -->
+          <div class="form-grupo">
+            <h3>Observações</h3>
+            <textarea id="analise-observacoes" rows="4" placeholder="Observações gerais sobre a análise..."></textarea>
+          </div>
+
+          <!-- Botões -->
+          <div class="form-acoes">
+            <button type="button" onclick="mostrarSecao('dashboard')" class="btn-secundario">Cancelar</button>
+            <button type="submit" class="btn-primario">
+              <span>💾</span> Salvar Análise
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- SEÇÃO: HISTÓRICO -->
+      <section id="secao-historico" class="secao">
+        <h2 class="secao-titulo">📋 Histórico de Análises</h2>
+
+        <!-- Filtros -->
+        <div class="filtros-historico">
+          <div class="input-group">
+            <label>Data Início</label>
+            <input type="date" id="filtro-data-inicio">
+          </div>
+          <div class="input-group">
+            <label>Data Fim</label>
+            <input type="date" id="filtro-data-fim">
+          </div>
+          <div class="input-group">
+            <label>Ponto de Coleta</label>
+            <select id="filtro-ponto">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Tipo</label>
+            <select id="filtro-tipo">
+              <option value="">Todos</option>
+              <option value="Entrada">Entrada</option>
+              <option value="Intermediário">Intermediário</option>
+              <option value="Saída">Saída</option>
+            </select>
+          </div>
+          <button onclick="aplicarFiltros()" class="btn-primario">Filtrar</button>
+          <button onclick="exportarHistorico('excel')" class="btn-secundario">📊 Excel</button>
+          <button onclick="exportarHistorico('csv')" class="btn-secundario">📄 CSV</button>
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <div class="tabela-container">
+          <table id="tabela-historico" class="tabela-dados">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Ponto</th>
+                <th>Tipo</th>
+                <th>Parâmetros</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-historico">
+              <!-- Dados inseridos via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO: GRÁFICOS -->
+      <section id="secao-graficos" class="secao">
+        <h2 class="secao-titulo">📈 Gráficos e Análises</h2>
+
+        <div class="graficos-grid">
+          <div class="grafico-card grande">
+            <h3>Comparativo: Entrada vs Saída</h3>
+            <canvas id="grafico-comparativo"></canvas>
+            <div class="grafico-acoes">
+              <button onclick="downloadGrafico('comparativo', 'png')" class="btn-secundario">📷 PNG</button>
+              <button onclick="downloadGrafico('comparativo', 'pdf')" class="btn-secundario">📄 PDF</button>
+            </div>
+          </div>
+
+          <div class="grafico-card">
+            <h3>Evolução Temporal</h3>
+            <canvas id="grafico-temporal"></canvas>
+          </div>
+
+          <div class="grafico-card">
+            <h3>Distribuição por Parâmetro</h3>
+            <canvas id="grafico-pizza"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO: PONTOS DE COLETA -->
+      <section id="secao-pontos-coleta" class="secao">
+        <h2 class="secao-titulo">📍 Pontos de Coleta</h2>
+
+        <div class="pontos-acoes">
+          <button onclick="mostrarModalNovoPonto()" class="btn-primario">
+            <span>➕</span> Novo Ponto
+          </button>
+        </div>
+
+        <div id="lista-pontos-coleta" class="lista-pontos">
+          <!-- Pontos inseridos via JavaScript -->
+        </div>
+      </section>
+
+      <!-- SEÇÃO: ARTIGO ABNT -->
+      <section id="secao-artigo" class="secao">
+        <div class="secao-header">
+          <h2 class="secao-titulo">📝 Artigo Científico ABNT</h2>
+          <div class="artigo-acoes">
+            <button onclick="mostrarModalAIAssistant()" class="btn-ai">
+              <span>🤖</span> Assistente IA
+            </button>
+            <button onclick="exportarArtigo('word')" class="btn-secundario">📘 Word</button>
+            <button onclick="exportarArtigo('pdf')" class="btn-secundario">📄 PDF</button>
+            <button onclick="salvarArtigoLocal()" class="btn-primario">💾 Salvar</button>
+          </div>
+        </div>
+
+        <div class="artigo-container">
+          <!-- Barra Lateral do Artigo -->
+          <div class="artigo-sidebar">
+            <h4>Seções</h4>
+            <ul id="artigo-secoes-lista" class="artigo-secoes">
+              <!-- Seções inseridas via JavaScript -->
+            </ul>
+
+            <div class="artigo-progresso">
+              <h4>Progresso</h4>
+              <div class="barra-progresso">
+                <div id="artigo-barra-progresso" class="barra-preenchida" style="width: 0%"></div>
+              </div>
+              <p id="artigo-texto-progresso">0% completo</p>
+            </div>
+          </div>
+
+          <!-- Editor do Artigo -->
+          <div class="artigo-editor">
+            <div id="artigo-secao-atual" class="artigo-secao-content">
+              <!-- Conteúdo da seção atual -->
+            </div>
+
+            <div class="artigo-navegacao">
+              <button onclick="secaoAnterior()" class="btn-secundario">← Anterior</button>
+              <button onclick="proximaSecao()" class="btn-primario">Próxima →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================
+       MODAIS
+       ============================================ -->
+
+  <!-- Modal de Tokens -->
+  <div id="modal-tokens" class="modal">
+    <div class="modal-conteudo">
+      <span class="modal-fechar" onclick="fecharModal('tokens')">&times;</span>
+      <h2>🪙 Seus Tokens</h2>
+      <div class="tokens-info">
+        <div class="tokens-saldo">
+          <span id="modal-saldo-tokens">0</span>
+          <span>tokens</span>
+        </div>
+        <div id="modal-historico-tokens" class="tokens-historico">
+          <!-- Histórico inserido via JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Detalhes da Análise -->
+  <div id="modal-analise" class="modal">
+    <div class="modal-conteudo modal-grande">
+      <span class="modal-fechar" onclick="fecharModal('analise')">&times;</span>
+      <h2>Detalhes da Análise</h2>
+      <div id="modal-analise-conteudo">
+        <!-- Conteúdo inserido via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Novo Ponto de Coleta -->
+  <div id="modal-ponto" class="modal">
+    <div class="modal-conteudo">
+      <span class="modal-fechar" onclick="fecharModal('ponto')">&times;</span>
+      <h2>📍 Novo Ponto de Coleta</h2>
+      <form id="form-ponto" class="form-modal">
+        <div class="input-group">
+          <label>Nome do Ponto *</label>
+          <input type="text" id="ponto-nome" required>
+        </div>
+        <div class="input-group">
+          <label>Descrição</label>
+          <textarea id="ponto-descricao" rows="3"></textarea>
+        </div>
+        <div class="input-group">
+          <label>Localização</label>
+          <input type="text" id="ponto-localizacao" placeholder="Coordenadas ou endereço">
+        </div>
+        <div class="form-acoes">
+          <button type="button" onclick="fecharModal('ponto')" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Assistente IA -->
+  <div id="modal-ai" class="modal">
+    <div class="modal-conteudo modal-grande">
+      <span class="modal-fechar" onclick="fecharModal('ai')">&times;</span>
+      <h2>🤖 Assistente IA - Artigo ABNT</h2>
+      <div class="ai-container">
+        <div class="ai-chat" id="ai-chat">
+          <div class="ai-mensagem ai">
+            <p>Olá! Sou seu assistente para criação de artigos científicos. Como posso ajudar?</p>
+          </div>
+        </div>
+        <div class="ai-input">
+          <input type="text" id="ai-pergunta" placeholder="Digite sua pergunta...">
+          <button onclick="enviarPerguntaAI()" class="btn-primario">Enviar</button>
+        </div>
+        <div class="ai-sugestoes">
+          <button onclick="usarSugestaoAI('formate-como-abnt')" class="btn-sugestao">Formatar como ABNT</button>
+          <button onclick="usarSugestaoAI('gerar-resumo')" class="btn-sugestao">Gerar Resumo</button>
+          <button onclick="usarSugestaoAI('revisar-texto')" class="btn-sugestao">Revisar Texto</button>
+          <button onclick="usarSugestaoAI('sugerir-referencias')" class="btn-sugestao">Sugerir Referências</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notificações -->
+  <div id="notificacoes" class="notificacoes"></div>
+
+  <!-- Loading -->
+  <div id="loading" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>Processando...</p>
+  </div>
+
+  <!-- Scripts -->
+  <?!= include('JavaScript'); ?>
+</body>
+</html>
